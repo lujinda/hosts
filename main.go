@@ -159,7 +159,6 @@ func GetHosts() []Host {
 				}
 			}
 		}
-		fmt.Println(ip_blacklist)
 		host.IPBlackList = ip_blacklist
 		hosts = append(hosts, host)
 	}
@@ -184,6 +183,18 @@ func HostName2IPS(hostname string) []string {
 	return ips
 }
 
+func MatchIP(ips []string, ip string) bool {
+	for _, _ip := range ips {
+		if _ip == ip {
+			return true
+		}
+		if _ip[len(_ip)-1] == '.' && strings.HasPrefix(ip, _ip) { // 如果黑名单ip写得是.结尾的话, 则采取头部匹配。如1.1. 可匹配1.1.1.1
+			return true
+		}
+	}
+	return false
+}
+
 func Run() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -195,7 +206,7 @@ func Run() {
 		ips := HostName2IPS(host.Name)
 
 		if len(ips) == 0 {
-			Log(fmt.Sprintf("%s no available ip"))
+			Log(fmt.Sprintf("%s no available ip", host.Name))
 			continue
 		}
 
@@ -207,12 +218,16 @@ func Run() {
 
 		final_ips := []string{}
 		for _, ip := range ips {
-			if utils.FindString(host.IPBlackList, ip) > -1 {
+			if MatchIP(host.IPBlackList, ip) {
 				Log(fmt.Sprintf("hostname %s ip %s in blacklist", host.Name, ip))
 
 			} else {
 				final_ips = append(final_ips, ip)
 			}
+		}
+		if len(final_ips) == 0 {
+			Log(fmt.Sprintf("%s no available ip", host.Name))
+			continue
 		}
 		ips = final_ips
 
